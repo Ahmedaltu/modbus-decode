@@ -3,339 +3,439 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ModbusDecode - Modbus RTU Frame Decoder</title>
+  <title>ModbusDecode — RTU Frame Tool</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #181c20;
-      --panel: #23272b;
-      --accent: #00ff99;
-      --error: #ff3860;
-      --ok: #23d160;
-      --border: #2c313a;
+      --bg: #0d0f12;
+      --surface: #181c20;
+      --surface2: #23272b;
+      --border: #2a2f3a;
       --text: #e0e0e0;
-      --chip-bg: #23272b;
-      --chip-hover: #00ff9955;
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      min-height: 100vh;
+      --muted: #6b7280;
+      --accent: #00d4aa;
+      --accent2: #0099ff;
+      --warn: #f59e0b;
+      --error: #ef4444;
+      --success: #10b981;
+      --mono: 'JetBrains Mono', monospace;
     }
     body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      margin: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
+    }
+    .app-layout { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1.25rem;
+      overflow-y: auto;
+      background: var(--surface);
       min-height: 100vh;
-      padding: 0 1rem 2rem 1rem;
     }
-    h1 {
-      color: var(--accent);
-      font-size: 2.2rem;
-      margin-top: 2rem;
-      margin-bottom: 0.5rem;
-      letter-spacing: 0.05em;
+    .main-content { flex: 1; padding: 2rem; max-width: 700px; margin: 0 auto; }
+    .tabs {
+      display: flex; gap: 0.5rem; margin-bottom: 2.2rem;
+    }
+    .tab {
+      border: none;
+      outline: none;
+      background: var(--surface2);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 1.02rem;
       font-weight: 700;
-      text-shadow: 0 2px 8px #00ff9955;
-    }
-    .subtitle {
-      color: #aaa;
-      font-size: 1rem;
-      margin-bottom: 2rem;
-      letter-spacing: 0.03em;
-    }
-    .chips {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .chip {
-      background: var(--chip-bg);
-      border: 1px solid var(--border);
-      color: var(--accent);
-      padding: 0.25rem 0.8rem;
+      padding: 0.6em 1.7em;
       border-radius: 999px;
       cursor: pointer;
-      font-size: 0.95rem;
-      transition: background 0.2s, color 0.2s;
-      user-select: none;
+      transition: background 0.15s, color 0.15s;
     }
-    .chip:hover {
-      background: var(--chip-hover);
-      color: #fff;
-    }
-    .input-panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem 1.5rem 1rem 1.5rem;
-      box-shadow: 0 2px 16px #000a;
-      width: 100%;
-      max-width: 540px;
-      margin-bottom: 2rem;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-    }
-    label {
-      font-size: 1rem;
-      margin-bottom: 0.5rem;
-      color: var(--accent);
-      font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-    textarea {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem;
-      background: #15181b;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.7rem 1rem;
-      resize: vertical;
-      min-height: 3.5em;
-      max-height: 10em;
-      margin-bottom: 1.2rem;
-      outline: none;
-      transition: border 0.2s;
-    }
-    textarea:focus {
-      border-color: var(--accent);
-    }
-    button {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.1rem;
+    .tab.active {
       background: var(--accent);
-      color: #181c20;
-      border: none;
-      border-radius: 6px;
-      padding: 0.7rem 0;
-      font-weight: 700;
-      cursor: pointer;
-      margin-bottom: 0.5rem;
-      transition: background 0.2s, color 0.2s;
-      box-shadow: 0 2px 8px #00ff9955;
+      color: #0d0f12;
     }
-    button:hover {
-      background: #00cc77;
-      color: #fff;
-    }
-    .results {
-      width: 100%;
-      max-width: 540px;
-      margin-top: 0.5rem;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.2rem 1.5rem 1.5rem 1.5rem;
-      box-shadow: 0 2px 16px #000a;
-      min-height: 5em;
-    }
-    .crc-status {
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5em;
-    }
-    .crc-valid {
-      color: var(--ok);
-    }
-    .crc-invalid {
-      color: var(--error);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
-      font-size: 1.05rem;
-    }
-    th, td {
-      border: 1px solid var(--border);
-      padding: 0.5em 0.7em;
-      text-align: left;
-    }
-    th {
-      background: #1c2024;
+    .tab:not(.active):hover {
       color: var(--accent);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .submode-btns { display: flex; gap: 0.7rem; margin-bottom: 1.5rem; }
+    .submode-btn {
+      border: none; outline: none;
+      background: var(--surface2);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 1rem;
       font-weight: 700;
-      letter-spacing: 0.02em;
+      padding: 0.5em 1.5em;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
     }
-    td {
-      background: #181c20;
+    .submode-btn.active {
+      background: var(--accent);
+      color: #0d0f12;
+    }
+    .submode-btn:not(.active):hover {
+      color: var(--accent);
+    }
+    .form-row { display: flex; gap: 1.2rem; margin-bottom: 1.2rem; }
+    .form-group { flex: 1; display: flex; flex-direction: column; }
+    label { font-size: 0.93rem; color: var(--accent); font-weight: 700; margin-bottom: 0.3em; }
+    input[type="number"], input[type="text"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
       color: var(--text);
+      font-family: var(--mono);
+      font-size: 1.05rem;
+      padding: 0.6em 1em;
+      outline: none;
+      transition: border-color 0.15s;
     }
-    @media (max-width: 600px) {
-      .input-panel, .results {
-        padding: 1rem 0.5rem 1rem 0.5rem;
-        max-width: 100vw;
-      }
-      h1 {
-        font-size: 1.3rem;
-      }
+    input:focus { border-color: var(--accent); }
+    .build-btn {
+      background: var(--accent);
+      color: #0d0f12;
+      border: none;
+      border-radius: 7px;
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 0.7em 2.5em;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-top: 0.5em;
+    }
+    .build-btn:hover { opacity: 0.85; }
+    .build-btn:active { transform: scale(0.97); }
+    .output-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .byte-visual { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .byte-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .byte-hex {
+      font-size: 0.82rem; font-weight: 700; padding: 6px 10px;
+      border-radius: 6px; min-width: 40px; text-align: center; letter-spacing: 0.05em;
+    }
+    .byte-role {
+      font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); text-align: center; max-width: 44px; line-height: 1.2;
+    }
+    .role-addr { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+    .role-fc   { background: rgba(0,153,255,0.15); color: var(--accent2); border: 1px solid rgba(0,153,255,0.3); }
+    .role-data { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); }
+    .role-crc  { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+    .crc-bar {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.6rem 0.875rem; border-radius: 7px;
+      font-size: 0.8rem; font-weight: 700; margin-bottom: 1.25rem;
+    }
+    .crc-bar.ok  { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--success); }
+    .crc-bar.bad { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25);  color: var(--error); }
+    .crc-computed { margin-left: auto; font-size: 0.7rem; opacity: 0.7; font-weight: 400; }
+    .copy-btn {
+      background: var(--accent2);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 0.5em 1.5em;
+      cursor: pointer;
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .copy-btn:hover { opacity: 0.85; }
+    .copy-btn:active { transform: scale(0.97); }
+    .hint { color: var(--muted); font-size: 0.93rem; margin-top: 0.7em; margin-bottom: 1.2em; }
+    .info-section { margin-bottom: 2.2em; }
+    .info-section-title { color: var(--accent); font-size: 1.15em; font-weight: 700; margin-bottom: 0.5em; }
+    .info-section-content { color: var(--muted); font-size: 1em; line-height: 1.7; }
+    .info-byte-diagram { display: flex; gap: 6px; margin: 1em 0 0.5em 0; }
+    .info-byte { padding: 0.5em 1.1em; border-radius: 7px; font-weight: 700; font-size: 1em; }
+    .info-byte.addr { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+    .info-byte.fc { background: rgba(0,153,255,0.15); color: var(--accent2); border: 1px solid rgba(0,153,255,0.3); }
+    .info-byte.data { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); }
+    .info-byte.crc { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main-content { padding: 1.25rem; }
     }
   </style>
 </head>
 <body>
-  <h1>ModbusDecode</h1>
-  <div class="subtitle">Modbus RTU Frame Decoder &middot; Industrial Terminal Style</div>
-
-  <div class="chips" id="example-chips">
-    <!-- Example chips inserted by JS -->
-  </div>
-
-  <form class="input-panel" id="decode-form" autocomplete="off" onsubmit="event.preventDefault(); decodeFrame();">
-    <label for="hex-input">Paste Modbus RTU frame (hex bytes):</label>
-    <textarea id="hex-input" spellcheck="false" placeholder="e.g. 01 03 00 6B 00 01 F5 D6"></textarea>
-    <button type="submit">Decode</button>
-  </form>
-
-  <div class="results" id="results">
-    <!-- Results inserted by JS -->
-  </div>
-
-  <script>
-    // Function code lookup
-    const FUNCTION_CODES = {
-      0x01: 'Read Coils',
-      0x02: 'Read Discrete Inputs',
-      0x03: 'Read Holding Registers',
-      0x04: 'Read Input Registers',
-      0x05: 'Write Single Coil',
-      0x06: 'Write Single Register',
-      0x0F: 'Write Multiple Coils',
-      0x10: 'Write Multiple Registers',
-      0x11: 'Report Slave ID',
-      0x2B: 'Encapsulated Interface',
-    };
-
-    // Example frames
-    const EXAMPLES = [
-      {
-        label: 'Read Holding Registers',
-        frame: '01 03 00 6B 00 01 F5 D6',
-      },
-      {
-        label: 'Write Single Coil',
-        frame: '0A 05 00 13 FF 00 8C 3A',
-      },
-      {
-        label: 'Read Coils',
-        frame: '11 01 00 13 00 25 0E 84',
-      },
-      {
-        label: 'CRC Invalid',
-        frame: '01 03 00 6B 00 01 F5 D7', // last byte wrong
-      },
-    ];
-
-    // Insert example chips
-    const chipsDiv = document.getElementById('example-chips');
-    EXAMPLES.forEach(ex => {
-      const chip = document.createElement('div');
-      chip.className = 'chip';
-      chip.textContent = ex.label;
-      chip.title = ex.frame;
-      chip.onclick = () => {
-        document.getElementById('hex-input').value = ex.frame;
-        decodeFrame();
-      };
-      chipsDiv.appendChild(chip);
-    });
-
-    // CRC16 Modbus implementation
-    function crc16_modbus(bytes) {
-      let crc = 0xFFFF;
-      for (let i = 0; i < bytes.length; i++) {
-        crc ^= bytes[i];
-        for (let j = 0; j < 8; j++) {
-          if (crc & 0x0001) {
-            crc = (crc >> 1) ^ 0xA001;
-          } else {
-            crc = crc >> 1;
-          }
-        }
+<div class="app-layout">
+  <aside class="sidebar">
+    <div style="font-size:1.1em;font-weight:700;color:var(--accent);margin-bottom:1.2em;">Modbus RTU Reference</div>
+    <div style="margin-bottom:1.5em;">
+      <div style="color:var(--muted);font-size:0.95em;line-height:1.7;">
+        <strong>Modbus RTU</strong> is a serial protocol for industrial automation.<br>Physical layers: <strong>RS-485</strong>, RS-232.<br>Each frame: address, function code, data, CRC16.
+      </div>
+    </div>
+    <div style="margin-bottom:1.5em;">
+      <div style="color:var(--accent2);font-weight:700;font-size:0.9em;">Frame Structure</div>
+      <div class="info-byte-diagram">
+        <div class="info-byte addr">01</div>
+        <div class="info-byte fc">03</div>
+        <div class="info-byte data">...</div>
+        <div class="info-byte crc">CRC</div>
+      </div>
+      <div style="color:var(--muted);font-size:0.85em;margin-top:0.5em;">Device Addr | Function | Data | CRC16</div>
+    </div>
+    <div style="margin-bottom:1.5em;">
+      <div style="color:var(--accent2);font-weight:700;font-size:0.9em;">Function Codes</div>
+      <div style="color:var(--muted);font-size:0.85em;line-height:1.6;">
+        01: Read Coils<br>02: Read Discrete Inputs<br>03: Read Holding Registers<br>04: Read Input Registers<br>05: Write Single Coil<br>06: Write Single Register<br>15: Write Multiple Coils<br>16: Write Multiple Registers
+      </div>
+    </div>
+    <div style="margin-bottom:1.5em;">
+      <div style="color:var(--accent2);font-weight:700;font-size:0.9em;">CRC16</div>
+      <div style="color:var(--muted);font-size:0.85em;line-height:1.6;">
+        Sender computes CRC16 over all bytes and appends it.<br>Receiver recomputes and compares.<br>Mismatch = frame discarded.
+      </div>
+    </div>
+    <div>
+      <div style="color:var(--accent2);font-weight:700;font-size:0.9em;">Master vs Slave</div>
+      <div style="color:var(--muted);font-size:0.85em;line-height:1.6;">
+        <strong>Master</strong>: initiates all requests.<br><strong>Slave</strong>: responds only when addressed.<br>Up to 247 slaves on one RS-485 bus.
+      </div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <div class="tabs">
+      <button class="tab active" id="tab-build" onclick="switchTab('build')">Build Frame</button>
+      <button class="tab" id="tab-decode" onclick="switchTab('decode')">Decode Frame</button>
+      <button class="tab" id="tab-info" onclick="switchTab('info')">What is Modbus?</button>
+    </div>
+    <div class="tab-content active" id="content-build">
+      <div class="submode-btns">
+        <button class="submode-btn active" id="submode-read" onclick="switchSubmode('read')">Read Registers</button>
+        <button class="submode-btn" id="submode-write" onclick="switchSubmode('write')">Write Register</button>
+      </div>
+      <form id="build-form" onsubmit="event.preventDefault(); buildFrame();">
+        <div id="build-fields-read">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="read-slave">Slave Address</label>
+              <input type="number" id="read-slave" min="1" max="247" value="1">
+            </div>
+            <div class="form-group">
+              <label for="read-reg">Register Address</label>
+              <input type="text" id="read-reg" value="0x006B">
+            </div>
+            <div class="form-group">
+              <label for="read-qty">Quantity</label>
+              <input type="number" id="read-qty" min="1" max="125" value="1">
+            </div>
+          </div>
+        </div>
+        <div id="build-fields-write" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="write-slave">Slave Address</label>
+              <input type="number" id="write-slave" min="1" max="247" value="1">
+            </div>
+            <div class="form-group">
+              <label for="write-reg">Register Address</label>
+              <input type="text" id="write-reg" value="0x0001">
+            </div>
+            <div class="form-group">
+              <label for="write-val">Value to Write</label>
+              <input type="number" id="write-val" min="0" max="65535" value="0">
+            </div>
+          </div>
+        </div>
+        <button class="build-btn" type="submit">Build Frame</button>
+      </form>
+      <div id="build-output"></div>
+    </div>
+    <div class="tab-content" id="content-decode">
+      <form id="decode-form" onsubmit="event.preventDefault(); decodeFrame();">
+        <label for="decode-input" style="color:var(--accent);font-weight:700;">Paste Modbus RTU frame (hex bytes):</label>
+        <textarea id="decode-input" spellcheck="false" placeholder="e.g. 01 03 00 6B 00 01 F5 D6" style="width:100%;margin-bottom:0.7em;"></textarea>
+        <button class="build-btn" type="submit">Decode</button>
+      </form>
+      <div class="hint">Get this frame from your serial monitor or logic analyzer after sending the built frame above to your device.</div>
+      <div id="decode-output"></div>
+    </div>
+    <div class="tab-content" id="content-info">
+      <div class="info-section">
+        <div class="info-section-title">What is Modbus RTU?</div>
+        <div class="info-section-content">
+          Modbus RTU is a serial protocol for industrial automation. It uses compact binary frames for fast, reliable communication over RS-485 or RS-232. Each frame contains a device address, function code, data, and CRC16 checksum.
+        </div>
+      </div>
+      <div class="info-section">
+        <div class="info-section-title">How does a frame work?</div>
+        <div class="info-section-content">
+          <div class="info-byte-diagram">
+            <div class="info-byte addr">01</div>
+            <div class="info-byte fc">03</div>
+            <div class="info-byte data">00 6B 00 01</div>
+            <div class="info-byte crc">F5 D6</div>
+          </div>
+          <div style="margin-top:0.7em;">Device address, function code, data, and CRC16. All values are bytes (0-255).</div>
+        </div>
+      </div>
+      <div class="info-section">
+        <div class="info-section-title">What is CRC and why does it matter?</div>
+        <div class="info-section-content">
+          CRC16 is a checksum that detects errors in the frame. The sender computes CRC16 over all bytes and appends it. The receiver recomputes and compares. If they don't match, the frame is discarded.
+        </div>
+      </div>
+      <div class="info-section">
+        <div class="info-section-title">Master vs Slave explained</div>
+        <div class="info-section-content">
+          The <strong>master</strong> (your MCU/PLC) initiates all requests. <strong>Slaves</strong> (sensors, actuators) respond only when addressed. Up to 247 slaves can share one RS-485 bus.
+        </div>
+      </div>
+      <div class="info-section">
+        <div class="info-section-title">Where do I get frames from?</div>
+        <div class="info-section-content">
+          Serial monitor, logic analyzer, or firmware debug logs. Use this tool to build frames to send, or decode frames you capture.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<footer style="border-top:1px solid var(--border);padding:1.2em 2em;text-align:center;font-size:0.8em;color:var(--muted);">ModbusDecode — Free Modbus RTU frame tool for firmware developers</footer>
+<script>
+// --- Core CRC and hex parsing functions ---
+function crc16(bytes) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x0001) {
+        crc = (crc >> 1) ^ 0xA001;
+      } else {
+        crc = crc >> 1;
       }
-      return crc & 0xFFFF;
     }
-
-    // Parse hex string to byte array
-    function parseHexInput(str) {
-      // Remove all non-hex chars except space
-      str = str.replace(/[^0-9a-fA-F ]+/g, ' ');
-      // Split by whitespace
-      let parts = str.trim().split(/\s+/);
-      if (parts.length < 4) return null;
-      let bytes = [];
-      for (let p of parts) {
-        if (p.length === 0) continue;
-        if (p.length > 2) return null;
-        let val = parseInt(p, 16);
-        if (isNaN(val) || val < 0 || val > 255) return null;
-        bytes.push(val);
-      }
-      return bytes;
+  }
+  return crc;
+}
+function parseHex(str) {
+  str = str.replace(/[^0-9a-fA-F\s-]+/g, ' ');
+  let parts = str.trim().split(/\s+|-/);
+  if (parts.length < 4) return null;
+  let bytes = [];
+  for (let p of parts) {
+    if (p.length === 0) continue;
+    if (p.length > 2) return null;
+    let val = parseInt(p, 16);
+    if (isNaN(val) || val < 0 || val > 255) return null;
+    bytes.push(val);
+  }
+  return bytes;
+}
+// --- Tab logic ---
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('content-' + tab).classList.add('active');
+}
+function switchSubmode(mode) {
+  document.getElementById('submode-read').classList.toggle('active', mode === 'read');
+  document.getElementById('submode-write').classList.toggle('active', mode === 'write');
+  document.getElementById('build-fields-read').style.display = mode === 'read' ? '' : 'none';
+  document.getElementById('build-fields-write').style.display = mode === 'write' ? '' : 'none';
+  document.getElementById('build-output').innerHTML = '';
+}
+// --- Build Frame logic ---
+function buildFrame() {
+  let mode = document.getElementById('submode-read').classList.contains('active') ? 'read' : 'write';
+  let bytes = [];
+  let output = '';
+  if (mode === 'read') {
+    let slave = parseInt(document.getElementById('read-slave').value) || 1;
+    let reg = document.getElementById('read-reg').value.trim();
+    let qty = parseInt(document.getElementById('read-qty').value) || 1;
+    let regVal = reg.startsWith('0x') ? parseInt(reg, 16) : parseInt(reg, 10);
+    if (isNaN(slave) || slave < 1 || slave > 247 || isNaN(regVal) || regVal < 0 || regVal > 0xFFFF || isNaN(qty) || qty < 1 || qty > 125) {
+      document.getElementById('build-output').innerHTML = '<div class="crc-bar bad">Invalid input values.</div>';
+      return;
     }
-
-    function decodeFrame() {
-      const input = document.getElementById('hex-input').value;
-      const resultsDiv = document.getElementById('results');
-      resultsDiv.innerHTML = '';
-      let bytes = parseHexInput(input);
-      if (!bytes) {
-        resultsDiv.innerHTML = '<span class="crc-status crc-invalid">Invalid hex input.</span>';
-        return;
-      }
-      if (bytes.length < 4) {
-        resultsDiv.innerHTML = '<span class="crc-status crc-invalid">Frame too short.</span>';
-        return;
-      }
-      // CRC is last 2 bytes (little endian)
-      let frame = bytes.slice();
-      let crc_given = (frame[frame.length-2]) | (frame[frame.length-1] << 8);
-      let data = frame.slice(0, -2);
-      let crc_calc = crc16_modbus(data);
-      let crcValid = (crc_given === crc_calc);
-      // Device address
-      let devAddr = frame[0];
-      // Function code
-      let funcCode = frame[1];
-      let funcName = FUNCTION_CODES[funcCode] || 'Unknown';
-      // Data bytes
-      let dataBytes = frame.slice(2, -2);
-      // CRC bytes
-      let crcBytes = frame.slice(-2);
-      // Format hex
-      function hex(val, pad=2) {
-        return val.toString(16).toUpperCase().padStart(pad, '0');
-      }
-      // CRC status
-      resultsDiv.innerHTML += `<div class="crc-status ${crcValid ? 'crc-valid' : 'crc-invalid'}">`
-        + (crcValid ? '✔ CRC Valid' : '✖ CRC Invalid')
-        + `</div>`;
-      // Table
-      resultsDiv.innerHTML += `
-        <table>
-          <tr><th>Field</th><th>Value</th></tr>
-          <tr><td>Device Address</td><td>0x${hex(devAddr)} (${devAddr})</td></tr>
-          <tr><td>Function Code</td><td>0x${hex(funcCode)} (${funcName})</td></tr>
-          <tr><td>Data Bytes</td><td>${dataBytes.length ? dataBytes.map(b => '0x'+hex(b)).join(' ') : '<em>None</em>'}</td></tr>
-          <tr><td>CRC Bytes</td><td>0x${hex(crcBytes[0])} 0x${hex(crcBytes[1])}</td></tr>
-        </table>
-      `;
+    bytes = [slave, 0x03, (regVal >> 8) & 0xFF, regVal & 0xFF, (qty >> 8) & 0xFF, qty & 0xFF];
+  } else {
+    let slave = parseInt(document.getElementById('write-slave').value) || 1;
+    let reg = document.getElementById('write-reg').value.trim();
+    let val = parseInt(document.getElementById('write-val').value) || 0;
+    let regVal = reg.startsWith('0x') ? parseInt(reg, 16) : parseInt(reg, 10);
+    if (isNaN(slave) || slave < 1 || slave > 247 || isNaN(regVal) || regVal < 0 || regVal > 0xFFFF || isNaN(val) || val < 0 || val > 65535) {
+      document.getElementById('build-output').innerHTML = '<div class="crc-bar bad">Invalid input values.</div>';
+      return;
     }
-
-    // Auto-decode on input if pasted
-    document.getElementById('hex-input').addEventListener('paste', function() {
-      setTimeout(decodeFrame, 50);
-    });
-  </script>
+    bytes = [slave, 0x06, (regVal >> 8) & 0xFF, regVal & 0xFF, (val >> 8) & 0xFF, val & 0xFF];
+  }
+  let crc = crc16(bytes);
+  let crc_lo = crc & 0xFF;
+  let crc_hi = (crc >> 8) & 0xFF;
+  let frame = [...bytes, crc_lo, crc_hi];
+  let hexStr = frame.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+  output += `<div class='output-card'>`;
+  output += `<div style='font-size:1.1em;font-weight:700;margin-bottom:0.7em;'>${hexStr}</div>`;
+  output += renderByteBlocks(frame, mode === 'read' ? ['addr','fc','data','data','data','data','crc','crc'] : ['addr','fc','data','data','data','data','crc','crc']);
+  output += `<div class='crc-bar ok'>✔ CRC Valid</div>`;
+  output += `<button class='copy-btn' onclick='copyFrame("${hexStr}")'>Copy Frame</button>`;
+  output += `<div class='hint'>Send this frame to your device over RS-485.</div>`;
+  output += `</div>`;
+  document.getElementById('build-output').innerHTML = output;
+}
+function copyFrame(str) {
+  navigator.clipboard.writeText(str);
+}
+function renderByteBlocks(bytes, roles) {
+  let html = `<div class='byte-visual'>`;
+  for (let i = 0; i < bytes.length; ++i) {
+    let role = roles && roles[i] ? roles[i] : (i === 0 ? 'addr' : i === 1 ? 'fc' : (i >= bytes.length-2 ? 'crc' : 'data'));
+    html += `<div class='byte-block'><div class='byte-hex role-${role}'>${bytes[i].toString(16).toUpperCase().padStart(2,'0')}</div><div class='byte-role'>${role.toUpperCase()}</div></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+// --- Decode Frame logic ---
+function decodeFrame() {
+  let input = document.getElementById('decode-input').value;
+  let bytes = parseHex(input);
+  let out = '';
+  if (!bytes) {
+    document.getElementById('decode-output').innerHTML = `<div class='crc-bar bad'>Invalid hex input.</div>`;
+    return;
+  }
+  if (bytes.length < 4) {
+    document.getElementById('decode-output').innerHTML = `<div class='crc-bar bad'>Frame too short.</div>`;
+    return;
+  }
+  let msg = bytes.slice(0, -2);
+  let crc = crc16(msg);
+  let crc_lo = crc & 0xFF;
+  let crc_hi = (crc >> 8) & 0xFF;
+  let given_lo = bytes[bytes.length-2];
+  let given_hi = bytes[bytes.length-1];
+  let crcValid = (crc_lo === given_lo && crc_hi === given_hi);
+  out += renderByteBlocks(bytes);
+  out += `<div class='crc-bar ${crcValid ? 'ok' : 'bad'}'>${crcValid ? '✔ CRC Valid' : '✖ CRC Invalid'}<span class='crc-computed'>computed: ${crc_lo.toString(16).toUpperCase().padStart(2,'0')} ${crc_hi.toString(16).toUpperCase().padStart(2,'0')}</span></div>`;
+  document.getElementById('decode-output').innerHTML = out;
+}
+// --- Init ---
+switchTab('build');
+switchSubmode('read');
+</script>
 </body>
 </html>
