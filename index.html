@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ModbusDecode - Modbus RTU Frame Decoder</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #181c20;
+      --panel: #23272b;
+      --accent: #00ff99;
+      --error: #ff3860;
+      --ok: #23d160;
+      --border: #2c313a;
+      --text: #e0e0e0;
+      --chip-bg: #23272b;
+      --chip-hover: #00ff9955;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 0 1rem 2rem 1rem;
+    }
+    h1 {
+      color: var(--accent);
+      font-size: 2.2rem;
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      text-shadow: 0 2px 8px #00ff9955;
+    }
+    .subtitle {
+      color: #aaa;
+      font-size: 1rem;
+      margin-bottom: 2rem;
+      letter-spacing: 0.03em;
+    }
+    .chips {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .chip {
+      background: var(--chip-bg);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 0.25rem 0.8rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background 0.2s, color 0.2s;
+      user-select: none;
+    }
+    .chip:hover {
+      background: var(--chip-hover);
+      color: #fff;
+    }
+    .input-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem 1.5rem 1rem 1.5rem;
+      box-shadow: 0 2px 16px #000a;
+      width: 100%;
+      max-width: 540px;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    label {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    textarea {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      background: #15181b;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.7rem 1rem;
+      resize: vertical;
+      min-height: 3.5em;
+      max-height: 10em;
+      margin-bottom: 1.2rem;
+      outline: none;
+      transition: border 0.2s;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+    }
+    button {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      background: var(--accent);
+      color: #181c20;
+      border: none;
+      border-radius: 6px;
+      padding: 0.7rem 0;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      transition: background 0.2s, color 0.2s;
+      box-shadow: 0 2px 8px #00ff9955;
+    }
+    button:hover {
+      background: #00cc77;
+      color: #fff;
+    }
+    .results {
+      width: 100%;
+      max-width: 540px;
+      margin-top: 0.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem 1.5rem 1.5rem;
+      box-shadow: 0 2px 16px #000a;
+      min-height: 5em;
+    }
+    .crc-status {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .crc-valid {
+      color: var(--ok);
+    }
+    .crc-invalid {
+      color: var(--error);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+      font-size: 1.05rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5em 0.7em;
+      text-align: left;
+    }
+    th {
+      background: #1c2024;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    td {
+      background: #181c20;
+      color: var(--text);
+    }
+    @media (max-width: 600px) {
+      .input-panel, .results {
+        padding: 1rem 0.5rem 1rem 0.5rem;
+        max-width: 100vw;
+      }
+      h1 {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>ModbusDecode</h1>
+  <div class="subtitle">Modbus RTU Frame Decoder &middot; Industrial Terminal Style</div>
+
+  <div class="chips" id="example-chips">
+    <!-- Example chips inserted by JS -->
+  </div>
+
+  <form class="input-panel" id="decode-form" autocomplete="off" onsubmit="event.preventDefault(); decodeFrame();">
+    <label for="hex-input">Paste Modbus RTU frame (hex bytes):</label>
+    <textarea id="hex-input" spellcheck="false" placeholder="e.g. 01 03 00 6B 00 01 F5 D6"></textarea>
+    <button type="submit">Decode</button>
+  </form>
+
+  <div class="results" id="results">
+    <!-- Results inserted by JS -->
+  </div>
+
+  <script>
+    // Function code lookup
+    const FUNCTION_CODES = {
+      0x01: 'Read Coils',
+      0x02: 'Read Discrete Inputs',
+      0x03: 'Read Holding Registers',
+      0x04: 'Read Input Registers',
+      0x05: 'Write Single Coil',
+      0x06: 'Write Single Register',
+      0x0F: 'Write Multiple Coils',
+      0x10: 'Write Multiple Registers',
+      0x11: 'Report Slave ID',
+      0x2B: 'Encapsulated Interface',
+    };
+
+    // Example frames
+    const EXAMPLES = [
+      {
+        label: 'Read Holding Registers',
+        frame: '01 03 00 6B 00 01 F5 D6',
+      },
+      {
+        label: 'Write Single Coil',
+        frame: '0A 05 00 13 FF 00 8C 3A',
+      },
+      {
+        label: 'Read Coils',
+        frame: '11 01 00 13 00 25 0E 84',
+      },
+      {
+        label: 'CRC Invalid',
+        frame: '01 03 00 6B 00 01 F5 D7', // last byte wrong
+      },
+    ];
+
+    // Insert example chips
+    const chipsDiv = document.getElementById('example-chips');
+    EXAMPLES.forEach(ex => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.textContent = ex.label;
+      chip.title = ex.frame;
+      chip.onclick = () => {
+        document.getElementById('hex-input').value = ex.frame;
+        decodeFrame();
+      };
+      chipsDiv.appendChild(chip);
+    });
+
+    // CRC16 Modbus implementation
+    function crc16_modbus(bytes) {
+      let crc = 0xFFFF;
+      for (let i = 0; i < bytes.length; i++) {
+        crc ^= bytes[i];
+        for (let j = 0; j < 8; j++) {
+          if (crc & 0x0001) {
+            crc = (crc >> 1) ^ 0xA001;
+          } else {
+            crc = crc >> 1;
+          }
+        }
+      }
+      return crc & 0xFFFF;
+    }
+
+    // Parse hex string to byte array
+    function parseHexInput(str) {
+      // Remove all non-hex chars except space
+      str = str.replace(/[^0-9a-fA-F ]+/g, ' ');
+      // Split by whitespace
+      let parts = str.trim().split(/\s+/);
+      if (parts.length < 4) return null;
+      let bytes = [];
+      for (let p of parts) {
+        if (p.length === 0) continue;
+        if (p.length > 2) return null;
+        let val = parseInt(p, 16);
+        if (isNaN(val) || val < 0 || val > 255) return null;
+        bytes.push(val);
+      }
+      return bytes;
+    }
+
+    function decodeFrame() {
+      const input = document.getElementById('hex-input').value;
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      let bytes = parseHexInput(input);
+      if (!bytes) {
+        resultsDiv.innerHTML = '<span class="crc-status crc-invalid">Invalid hex input.</span>';
+        return;
+      }
+      if (bytes.length < 4) {
+        resultsDiv.innerHTML = '<span class="crc-status crc-invalid">Frame too short.</span>';
+        return;
+      }
+      // CRC is last 2 bytes (little endian)
+      let frame = bytes.slice();
+      let crc_given = (frame[frame.length-2]) | (frame[frame.length-1] << 8);
+      let data = frame.slice(0, -2);
+      let crc_calc = crc16_modbus(data);
+      let crcValid = (crc_given === crc_calc);
+      // Device address
+      let devAddr = frame[0];
+      // Function code
+      let funcCode = frame[1];
+      let funcName = FUNCTION_CODES[funcCode] || 'Unknown';
+      // Data bytes
+      let dataBytes = frame.slice(2, -2);
+      // CRC bytes
+      let crcBytes = frame.slice(-2);
+      // Format hex
+      function hex(val, pad=2) {
+        return val.toString(16).toUpperCase().padStart(pad, '0');
+      }
+      // CRC status
+      resultsDiv.innerHTML += `<div class="crc-status ${crcValid ? 'crc-valid' : 'crc-invalid'}">`
+        + (crcValid ? '✔ CRC Valid' : '✖ CRC Invalid')
+        + `</div>`;
+      // Table
+      resultsDiv.innerHTML += `
+        <table>
+          <tr><th>Field</th><th>Value</th></tr>
+          <tr><td>Device Address</td><td>0x${hex(devAddr)} (${devAddr})</td></tr>
+          <tr><td>Function Code</td><td>0x${hex(funcCode)} (${funcName})</td></tr>
+          <tr><td>Data Bytes</td><td>${dataBytes.length ? dataBytes.map(b => '0x'+hex(b)).join(' ') : '<em>None</em>'}</td></tr>
+          <tr><td>CRC Bytes</td><td>0x${hex(crcBytes[0])} 0x${hex(crcBytes[1])}</td></tr>
+        </table>
+      `;
+    }
+
+    // Auto-decode on input if pasted
+    document.getElementById('hex-input').addEventListener('paste', function() {
+      setTimeout(decodeFrame, 50);
+    });
+  </script>
+</body>
+</html>
