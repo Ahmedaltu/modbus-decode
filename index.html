@@ -893,7 +893,11 @@ function renderByteMap(frame) {
 }
 
 // --- Visual 4: Timing Diagram ---
-function renderTimingDiagram() {
+function renderTimingDiagram(frame) {
+  var frameLen = frame ? frame.length : 8;
+  var charTimeMs = (11 / 9600 * 1000);
+  var reqMs = (frameLen * charTimeMs).toFixed(1);
+  var taMs = (3.5 * charTimeMs).toFixed(1);
   var blocks = [
     { label: 'IDLE',        pct: 12, bg: '#23272b', color: '#6b7280' },
     { label: 'REQUEST',     pct: 28, bg: 'rgba(0,212,170,0.25)', color: '#00d4aa' },
@@ -917,6 +921,10 @@ function renderTimingDiagram() {
       <div class="timing-axis-label">t=0</div>
       <div class="timing-axis-line"></div>
       <div class="timing-axis-label">time →</div>
+    </div>
+    <div style="margin-top:0.6rem;display:flex;gap:1.5rem;flex-wrap:wrap;">
+      <span style="font-size:0.65rem;color:#00d4aa;">Request: ${frameLen} bytes @ 9600 baud ≈ ${reqMs}ms</span>
+      <span style="font-size:0.65rem;color:#f59e0b;">Turnaround: 3.5 char ≈ ${taMs}ms</span>
     </div>
   </div>
 </div>`;
